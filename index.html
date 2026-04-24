@@ -212,6 +212,10 @@
           <div class="number" id="speedDisplay">0.0 px/s</div>
         </div>
 
+        <div class="info-card">
+          <div class="label">mittlere freie Weglänge</div>
+          <div class="number" id="freePathDisplay">0.0 px</div>
+        </div>
 
         <div class="info-card full-width">
           <div class="label">relatives Volumen des Behälters</div>
@@ -665,7 +669,6 @@
       ctx.font = '16px Arial';
       ctx.fillText('Bewegliche Wand', box.right - 76, box.top - 18);
       ctx.fillText(`Volumen: ${relativeVolume().toFixed(2)}`, box.left + 8, box.bottom + 34);
-      ctx.fillText(`freie Weglänge: ${state.displayFreePath.toFixed(1)} px`, box.left + 180, box.bottom + 34);
       ctx.restore();
     }
 
