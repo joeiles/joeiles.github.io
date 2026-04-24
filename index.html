@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ideales Gas im Teilchenmodell</title>
+  <style>
+    :root {
+      --bg1: #020617;
+      --bg2: #0f172a;
+      --panel: rgba(15, 23, 42, 0.94);
+      --card: rgba(30, 41, 59, 0.92);
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: linear-gradient(160deg, var(--bg1), var(--bg2) 60%, #111827);
+      padding: 14px;
+    }
+    .app {
+      width: min(1060px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 14px;
+    }
+    .panel, .stage {
+      background: var(--panel);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 18px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+    }
+    .panel { padding: 14px; }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 1.42rem;
+      color: white;
+    }
+    .group {
+      background: var(--card);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 14px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-weight: bold;
+      margin-bottom: 7px;
+      font-size: 0.92rem;
+    }
+    .value {
+      color: var(--accent);
+      min-width: 72px;
+      text-align: right;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 0.88rem;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      transition: transform 0.15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px); }
+    .primary { background: linear-gradient(135deg, #0ea5e9, #2563eb); }
+    .secondary { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .info-card {
+      background: var(--card);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 12px;
+      padding: 9px;
+    }
+    .info-card.full-width { grid-column: 1 / -1; }
+    .info-card .label {
+      color: var(--muted);
+      font-size: 0.76rem;
+      margin-bottom: 5px;
+      line-height: 1.22;
+      font-weight: normal;
+    }
+    .info-card .number {
+      font-size: 1rem;
+      font-weight: bold;
+      color: white;
+    }
+    .stage {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 470px;
+      background: radial-gradient(circle at 50% 50%, #0b1220, #020617 82%);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .free-path-note {
+      background: var(--card);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 12px;
+      padding: 9px 11px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      margin: 0;
+    }
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 1fr; }
+      canvas { height: 460px; }
+    }
+    @media (max-width: 600px) {
+      .info-grid { grid-template-columns: 1fr; }
+      canvas { height: 380px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="panel">
+      <h1>Ideales Gas im Teilchenmodell</h1>
+
+      <div class="group">
+        <label for="temperatureSlider">
+          <span>Temperatur</span>
+          <span class="value" id="temperatureValue">300 K</span>
+        </label>
+        <input id="temperatureSlider" type="range" min="180" max="700" step="10" value="300">
+      </div>
+
+      <div class="group">
+        <label for="particleSlider">
+          <span>Teilchenzahl</span>
+          <span class="value" id="particleValue">120</span>
+        </label>
+        <input id="particleSlider" type="range" min="40" max="220" step="10" value="120">
+      </div>
+
+      <div class="group">
+        <label for="wallSlider">
+          <span>Volumen über Wand</span>
+          <span class="value" id="wallValue">100 %</span>
+        </label>
+        <input id="wallSlider" type="range" min="45" max="100" step="1" value="100">
+      </div>
+
+      <div class="buttons">
+        <button class="primary" id="toggleBtn">Pause</button>
+        <button class="secondary" id="resetBtn">Neu starten</button>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="label">Kollisionen/s</div>
+          <div class="number" id="collisionRateDisplay">0</div>
+        </div>
+
+        <div class="info-card">
+          <div class="label">Druck</div>
+          <div class="number" id="pressureDisplay">0.0 hPa</div>
+        </div>
+
+        <div class="info-card">
+          <div class="label">mittlere Geschwindigkeit</div>
+          <div class="number" id="speedDisplay">0.0 px/s</div>
+        </div>
+
+        <div class="info-card">
+          <div class="label">mittlere freie Weglänge</div>
+          <div class="number" id="freePathDisplay">0.0 px</div>
+        </div>
+
+        <div class="info-card full-width">
+          <div class="label">relatives Volumen des Behälters</div>
+          <div class="number" id="volumeDisplay">1.00</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="legend">
+        <span><span class="dot" style="background:#7dd3fc"></span>Gasteilchen</span>
+        <span><span class="dot" style="background:#f59e0b"></span>bewegliche Wand</span>
+      </div>
+
+      <canvas id="canvas" width="900" height="680"></canvas>
+
+      <p class="free-path-note">
+        <strong>Mittlere freie Weglänge:</strong> Sie beschreibt hier die Strecke, die ein Teilchen in seiner momentanen Bewegungsrichtung bis zur nächsten Kollision mit einem anderen Teilchen oder einer Wand zurücklegen würde.
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const temperatureSlider = document.getElementById('temperatureSlider');
+    const particleSlider = document.getElementById('particleSlider');
+    const wallSlider = document.getElementById('wallSlider');
+
+    const temperatureValue = document.getElementById('temperatureValue');
+    const particleValue = document.getElementById('particleValue');
+    const wallValue = document.getElementById('wallValue');
+
+    const collisionRateDisplay = document.getElementById('collisionRateDisplay');
+    const pressureDisplay = document.getElementById('pressureDisplay');
+    const volumeDisplay = document.getElementById('volumeDisplay');
+    const speedDisplay = document.getElementById('speedDisplay');
+    const freePathDisplay = document.getElementById('freePathDisplay');
+
+    const toggleBtn = document.getElementById('toggleBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const box = {
+      left: 80,
+      top: 70,
+      bottom: 610,
+      rightBase: 800,
+      right: 800,
+      minRight: 404,
+      wallThickness: 10,
+      handleHeight: 150,
+    };
+
+    const settings = {
+      particleRadius: 4,
+      particleMass: 1,
+      maxDt: 0.018,
+      pressureScale: 0.28,
+      measurementInterval: 2.0,
+      pressureMeasurementInterval: 5.0,
+      thermostatStrength: 0.08,
+    };
+
+    const state = {
+      running: true,
+      particles: [],
+      lastTime: 0,
+
+      sideCollisionCounter: 0,
+      sideImpulseAccumulator: 0,
+
+      pressureImpulseAccumulator: 0,
+      pressureTimer: 0,
+
+      speedAccumulator: 0,
+      freePathAccumulator: 0,
+      sampleCounter: 0,
+
+      collisionRate: 0,
+      pressure: 0,
+      averageSpeed: 0,
+      averageFreePath: 0,
+
+      displayPressure: 0,
+      displayCollisionRate: 0,
+      displaySpeed: 0,
+      displayFreePath: 0,
+
+      measureTimer: 0,
+      dragWall: false,
+      dragOffsetX: 0,
+      wallSpeed: 0,
+      previousWallX: box.right,
+    };
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function currentWidth() {
+      return box.right - box.left;
+    }
+
+    function currentHeight() {
+      return box.bottom - box.top;
+    }
+
+    function relativeVolume() {
+      return currentWidth() / (box.rightBase - box.left);
+    }
+
+    function temperatureToTargetSpeed(T) {
+      const referenceTemperature = 300;
+      const referenceSpeed = 170;
+      return referenceSpeed * Math.sqrt(T / referenceTemperature);
+    }
+
+    function updateLabels() {
+      temperatureValue.textContent = `${temperatureSlider.value} K`;
+      particleValue.textContent = particleSlider.value;
+      wallValue.textContent = `${Math.round(relativeVolume() * 100)} %`;
+      volumeDisplay.textContent = relativeVolume().toFixed(2);
+    }
+
+    function setWallFromSlider() {
+      const fraction = Number(wallSlider.value) / 100;
+      box.right = box.left + (box.rightBase - box.left) * fraction;
+      box.right = clamp(box.right, box.minRight, box.rightBase);
+      state.previousWallX = box.right;
+      keepParticlesInside();
+      updateLabels();
+      resetMeasurements();
+    }
+
+    function syncSliderToWall() {
+      const fraction = (box.right - box.left) / (box.rightBase - box.left);
+      wallSlider.value = Math.round(fraction * 100);
+      updateLabels();
+    }
+
+    function makeParticle() {
+      const radius = settings.particleRadius;
+      const x = rand(box.left + radius + 6, box.right - radius - 6);
+      const y = rand(box.top + radius + 6, box.bottom - radius - 6);
+      const speed = temperatureToTargetSpeed(Number(temperatureSlider.value)) * rand(0.8, 1.2);
+      const angle = rand(0, Math.PI * 2);
+
+      return {
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius,
+        mass: settings.particleMass,
+      };
+    }
+
+    function createParticles() {
+      state.particles = [];
+      const count = Number(particleSlider.value);
+
+      for (let i = 0; i < count; i++) {
+        state.particles.push(makeParticle());
+      }
+
+      resetMeasurements();
+    }
+
+    function keepParticlesInside() {
+      for (const p of state.particles) {
+        p.x = clamp(p.x, box.left + p.radius + 1, box.right - p.radius - 1);
+        p.y = clamp(p.y, box.top + p.radius + 1, box.bottom - p.radius - 1);
+      }
+    }
+
+    function resetMeasurements() {
+      state.sideCollisionCounter = 0;
+      state.sideImpulseAccumulator = 0;
+      state.pressureImpulseAccumulator = 0;
+      state.pressureTimer = 0;
+      state.speedAccumulator = 0;
+      state.freePathAccumulator = 0;
+      state.sampleCounter = 0;
+      state.collisionRate = 0;
+      state.pressure = 0;
+      state.averageSpeed = 0;
+      state.averageFreePath = 0;
+      state.displayPressure = 0;
+      state.displayCollisionRate = 0;
+      state.displaySpeed = 0;
+      state.displayFreePath = 0;
+      state.measureTimer = 0;
+    }
+
+    function pathLengthToNextCollision(p, particleIndex) {
+      const speed = Math.hypot(p.vx, p.vy);
+      if (speed < 1e-8) return 0;
+
+      const dx = p.vx / speed;
+      const dy = p.vy / speed;
+      const distances = [];
+
+      if (dx > 0) distances.push((box.right - p.radius - p.x) / dx);
+      if (dx < 0) distances.push((box.left + p.radius - p.x) / dx);
+      if (dy > 0) distances.push((box.bottom - p.radius - p.y) / dy);
+      if (dy < 0) distances.push((box.top + p.radius - p.y) / dy);
+
+      for (let i = 0; i < state.particles.length; i++) {
+        if (i === particleIndex) continue;
+
+        const other = state.particles[i];
+        const relX = other.x - p.x;
+        const relY = other.y - p.y;
+        const combinedRadius = p.radius + other.radius;
+
+        const projection = relX * dx + relY * dy;
+        if (projection <= 0) continue;
+
+        const perpendicularSquared = relX * relX + relY * relY - projection * projection;
+        const radiusSquared = combinedRadius * combinedRadius;
+
+        if (perpendicularSquared > radiusSquared) continue;
+
+        const offset = Math.sqrt(Math.max(0, radiusSquared - perpendicularSquared));
+        const collisionDistance = projection - offset;
+
+        if (collisionDistance > 0) distances.push(collisionDistance);
+      }
+
+      const positiveDistances = distances.filter(d => d > 0 && Number.isFinite(d));
+      if (!positiveDistances.length) return 0;
+
+      return Math.min(...positiveDistances);
+    }
+
+    function instantaneousAverageSpeed() {
+      if (!state.particles.length) return 0;
+      return state.particles.reduce((sum, p) => sum + Math.hypot(p.vx, p.vy), 0) / state.particles.length;
+    }
+
+    function instantaneousAverageFreePath() {
+      if (!state.particles.length) return 0;
+      return state.particles.reduce((sum, p, index) => sum + pathLengthToNextCollision(p, index), 0) / state.particles.length;
+    }
+
+    function resetSimulation() {
+      setWallFromSlider();
+      createParticles();
+      applyIsothermalThermostat(true);
+      resetMeasurements();
+    }
+
+    function applyIsothermalThermostat(force = false) {
+      const target = temperatureToTargetSpeed(Number(temperatureSlider.value));
+      const strength = force ? 1 : settings.thermostatStrength;
+
+      for (const p of state.particles) {
+        const speed = Math.hypot(p.vx, p.vy);
+
+        if (speed < 1e-8) {
+          const angle = rand(0, Math.PI * 2);
+          p.vx = Math.cos(angle) * target;
+          p.vy = Math.sin(angle) * target;
+          continue;
+        }
+
+        const factor = 1 + (target / speed - 1) * strength;
+        p.vx *= factor;
+        p.vy *= factor;
+      }
+    }
+
+    function resolveParticleCollision(a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      const minDist = a.radius + b.radius;
+
+      if (dist === 0 || dist >= minDist) return;
+
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const dvx = a.vx - b.vx;
+      const dvy = a.vy - b.vy;
+      const rel = dvx * nx + dvy * ny;
+      const overlap = minDist - dist;
+
+      a.x -= nx * overlap * 0.5;
+      a.y -= ny * overlap * 0.5;
+      b.x += nx * overlap * 0.5;
+      b.y += ny * overlap * 0.5;
+
+      if (rel <= 0) return;
+
+      const impulse = rel;
+      a.vx -= impulse * nx;
+      a.vy -= impulse * ny;
+      b.vx += impulse * nx;
+      b.vy += impulse * ny;
+    }
+
+    function countSideWallCollision(deltaP) {
+      state.sideCollisionCounter += 1;
+      state.sideImpulseAccumulator += deltaP;
+      state.pressureImpulseAccumulator += deltaP;
+    }
+
+    function reflectAtWalls(p, wallSpeed) {
+      if (p.x - p.radius <= box.left) {
+        p.x = box.left + p.radius;
+        const oldVx = p.vx;
+        p.vx = Math.abs(p.vx);
+        countSideWallCollision(p.mass * Math.abs(p.vx - oldVx));
+      }
+
+      if (p.y - p.radius <= box.top) {
+        p.y = box.top + p.radius;
+        p.vy = Math.abs(p.vy);
+      }
+
+      if (p.y + p.radius >= box.bottom) {
+        p.y = box.bottom - p.radius;
+        p.vy = -Math.abs(p.vy);
+      }
+
+      if (p.x + p.radius >= box.right) {
+        p.x = box.right - p.radius;
+        const relativeVx = p.vx - wallSpeed;
+        const newRelativeVx = -relativeVx;
+        const newVx = wallSpeed + newRelativeVx;
+        const deltaP = p.mass * Math.abs(newVx - p.vx);
+        p.vx = newVx;
+        countSideWallCollision(deltaP);
+      }
+    }
+
+    function updateMeasurements(dt) {
+      state.measureTimer += dt;
+      state.pressureTimer += dt;
+
+      state.speedAccumulator += instantaneousAverageSpeed();
+      state.freePathAccumulator += instantaneousAverageFreePath();
+      state.sampleCounter += 1;
+
+      if (state.measureTimer >= settings.measurementInterval) {
+        state.collisionRate = state.sideCollisionCounter / state.measureTimer;
+        state.averageSpeed = state.speedAccumulator / Math.max(state.sampleCounter, 1);
+        state.averageFreePath = state.freePathAccumulator / Math.max(state.sampleCounter, 1);
+
+        state.displayCollisionRate = state.collisionRate;
+        state.displaySpeed = state.averageSpeed;
+        state.displayFreePath = state.averageFreePath;
+
+        state.sideCollisionCounter = 0;
+        state.speedAccumulator = 0;
+        state.freePathAccumulator = 0;
+        state.sampleCounter = 0;
+        state.measureTimer = 0;
+      }
+
+      if (state.pressureTimer >= settings.pressureMeasurementInterval) {
+        const sideWallLength = 2 * currentHeight();
+
+        state.pressure =
+          (state.pressureImpulseAccumulator / state.pressureTimer) /
+          sideWallLength *
+          settings.pressureScale;
+
+        state.displayPressure = state.pressure;
+        state.pressureImpulseAccumulator = 0;
+        state.pressureTimer = 0;
+      }
+    }
+
+    function updatePhysics(dt) {
+      state.wallSpeed = (box.right - state.previousWallX) / Math.max(dt, 1e-6);
+      state.previousWallX = box.right;
+
+      for (const p of state.particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        reflectAtWalls(p, state.wallSpeed);
+      }
+
+      for (let i = 0; i < state.particles.length; i++) {
+        for (let j = i + 1; j < state.particles.length; j++) {
+          resolveParticleCollision(state.particles[i], state.particles[j]);
+        }
+      }
+
+      applyIsothermalThermostat(false);
+      updateMeasurements(dt);
+    }
+
+    function drawBackgroundDots() {
+      ctx.save();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.04)';
+
+      for (let i = 0; i < 26; i++) {
+        const x = (i * 53) % canvas.width;
+        const y = (i * 101) % canvas.height;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBox() {
+      ctx.save();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#cbd5e1';
+
+      ctx.beginPath();
+      ctx.moveTo(box.left, box.top);
+      ctx.lineTo(box.left, box.bottom);
+      ctx.lineTo(box.right, box.bottom);
+      ctx.moveTo(box.left, box.top);
+      ctx.lineTo(box.right, box.top);
+      ctx.stroke();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(box.right - box.wallThickness / 2, box.top, box.wallThickness, currentHeight());
+
+      const handleY = (box.top + box.bottom) / 2 - box.handleHeight / 2;
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.58)';
+      ctx.fillRect(box.right - 12, handleY, 24, box.handleHeight);
+
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      ctx.fillStyle = 'rgba(125, 211, 252, 0.96)';
+
+      for (const p of state.particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawOverlay() {
+      ctx.save();
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '16px Arial';
+      ctx.fillText('Bewegliche Wand', box.right - 76, box.top - 18);
+      ctx.fillText(`Volumen: ${relativeVolume().toFixed(2)}`, box.left + 8, box.bottom + 34);
+      ctx.fillText(`freie Weglänge: ${state.displayFreePath.toFixed(1)} px`, box.left + 180, box.bottom + 34);
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackgroundDots();
+      drawBox();
+      drawParticles();
+      drawOverlay();
+    }
+
+    function updateStats() {
+      collisionRateDisplay.textContent = state.displayCollisionRate.toFixed(0);
+      pressureDisplay.textContent = `${state.displayPressure.toFixed(1)} hPa`;
+      volumeDisplay.textContent = relativeVolume().toFixed(2);
+      speedDisplay.textContent = `${state.displaySpeed.toFixed(1)} px/s`;
+      freePathDisplay.textContent = `${state.displayFreePath.toFixed(1)} px`;
+    }
+
+    function animate(timestamp) {
+      if (!state.lastTime) state.lastTime = timestamp;
+
+      let dt = (timestamp - state.lastTime) / 1000;
+      state.lastTime = timestamp;
+      dt = Math.min(dt, settings.maxDt);
+
+      if (state.running) {
+        updatePhysics(dt);
+      }
+
+      draw();
+      updateStats();
+      requestAnimationFrame(animate);
+    }
+
+    function getCanvasX(event) {
+      const rect = canvas.getBoundingClientRect();
+      return (event.clientX - rect.left) * (canvas.width / rect.width);
+    }
+
+    function isOnWallHandle(x, y) {
+      const handleY = (box.top + box.bottom) / 2 - box.handleHeight / 2;
+      return x >= box.right - 16 && x <= box.right + 16 && y >= handleY && y <= handleY + box.handleHeight;
+    }
+
+    canvas.addEventListener('pointerdown', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+
+      if (isOnWallHandle(x, y)) {
+        state.dragWall = true;
+        state.dragOffsetX = x - box.right;
+        canvas.setPointerCapture(event.pointerId);
+      }
+    });
+
+    canvas.addEventListener('pointermove', (event) => {
+      if (!state.dragWall) return;
+
+      const x = getCanvasX(event) - state.dragOffsetX;
+      box.right = clamp(x, box.minRight, box.rightBase);
+      keepParticlesInside();
+      syncSliderToWall();
+    });
+
+    canvas.addEventListener('pointerup', (event) => {
+      if (state.dragWall) {
+        state.dragWall = false;
+        canvas.releasePointerCapture(event.pointerId);
+        resetMeasurements();
+      }
+    });
+
+    wallSlider.addEventListener('input', () => {
+      setWallFromSlider();
+    });
+
+    temperatureSlider.addEventListener('input', () => {
+      updateLabels();
+      applyIsothermalThermostat(true);
+      resetMeasurements();
+    });
+
+    particleSlider.addEventListener('input', () => {
+      updateLabels();
+      createParticles();
+      applyIsothermalThermostat(true);
+    });
+
+    toggleBtn.addEventListener('click', () => {
+      state.running = !state.running;
+      toggleBtn.textContent = state.running ? 'Pause' : 'Fortsetzen';
+    });
+
+    resetBtn.addEventListener('click', () => {
+      wallSlider.value = 100;
+      resetSimulation();
+    });
+
+    updateLabels();
+    resetSimulation();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
