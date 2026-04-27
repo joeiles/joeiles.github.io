@@ -142,16 +142,6 @@
       border-radius: 14px;
       border: 1px solid rgba(148, 163, 184, 0.14);
     }
-    .free-path-note {
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      border-radius: 12px;
-      padding: 9px 11px;
-      color: var(--muted);
-      font-size: 0.82rem;
-      line-height: 1.35;
-      margin: 0;
-    }
     @media (max-width: 1120px) {
       .app { grid-template-columns: 1fr; }
       canvas { height: 460px; }
@@ -183,14 +173,6 @@
         <input id="particleSlider" type="range" min="40" max="500" step="10" value="120">
       </div>
 
-      <div class="group">
-        <label for="wallSlider">
-          <span>Volumen über Wand</span>
-          <span class="value" id="wallValue">100 %</span>
-        </label>
-        <input id="wallSlider" type="range" min="25" max="100" step="1" value="100">
-      </div>
-
       <div class="buttons">
         <button class="primary" id="toggleBtn">Pause</button>
         <button class="secondary" id="resetBtn">Neu starten</button>
@@ -207,19 +189,9 @@
           <div class="number" id="pressureDisplay">0.0 hPa</div>
         </div>
 
-        <div class="info-card">
+        <div class="info-card full-width">
           <div class="label">mittlere Geschwindigkeit</div>
           <div class="number" id="speedDisplay">0.0 px/s</div>
-        </div>
-
-        <div class="info-card">
-          <div class="label">mittlere freie Weglänge</div>
-          <div class="number" id="freePathDisplay">0.0 px</div>
-        </div>
-
-        <div class="info-card full-width">
-          <div class="label">relatives Volumen des Behälters</div>
-          <div class="number" id="volumeDisplay">1.00</div>
         </div>
       </div>
     </section>
@@ -227,14 +199,9 @@
     <section class="stage">
       <div class="legend">
         <span><span class="dot" style="background:#7dd3fc"></span>Gasteilchen</span>
-        <span><span class="dot" style="background:#f59e0b"></span>bewegliche Wand</span>
       </div>
 
       <canvas id="canvas" width="900" height="680"></canvas>
-
-      <p class="free-path-note">
-        <strong>Mittlere freie Weglänge:</strong> Sie beschreibt hier die Strecke, die ein Teilchen in seiner momentanen Bewegungsrichtung bis zur nächsten Kollision mit einem anderen Teilchen oder einer Wand zurücklegen würde.
-      </p>
     </section>
   </div>
 
@@ -244,17 +211,13 @@
 
     const temperatureSlider = document.getElementById('temperatureSlider');
     const particleSlider = document.getElementById('particleSlider');
-    const wallSlider = document.getElementById('wallSlider');
 
     const temperatureValue = document.getElementById('temperatureValue');
     const particleValue = document.getElementById('particleValue');
-    const wallValue = document.getElementById('wallValue');
 
     const collisionRateDisplay = document.getElementById('collisionRateDisplay');
     const pressureDisplay = document.getElementById('pressureDisplay');
-    const volumeDisplay = document.getElementById('volumeDisplay');
     const speedDisplay = document.getElementById('speedDisplay');
-    const freePathDisplay = document.getElementById('freePathDisplay');
 
     const toggleBtn = document.getElementById('toggleBtn');
     const resetBtn = document.getElementById('resetBtn');
@@ -265,9 +228,7 @@
       bottom: 610,
       rightBase: 800,
       right: 800,
-      minRight: 260,
       wallThickness: 10,
-      handleHeight: 150,
     };
 
     const settings = {
@@ -292,22 +253,17 @@
       pressureTimer: 0,
 
       speedAccumulator: 0,
-      freePathAccumulator: 0,
       sampleCounter: 0,
 
       collisionRate: 0,
       pressure: 0,
       averageSpeed: 0,
-      averageFreePath: 0,
 
       displayPressure: 0,
       displayCollisionRate: 0,
       displaySpeed: 0,
-      displayFreePath: 0,
 
       measureTimer: 0,
-      dragWall: false,
-      dragOffsetX: 0,
       wallSpeed: 0,
       previousWallX: box.right,
     };
@@ -328,10 +284,6 @@
       return box.bottom - box.top;
     }
 
-    function relativeVolume() {
-      return currentWidth() / (box.rightBase - box.left);
-    }
-
     function temperatureToTargetSpeed(T) {
       const referenceTemperature = 300;
       const referenceSpeed = 170;
@@ -341,24 +293,6 @@
     function updateLabels() {
       temperatureValue.textContent = `${temperatureSlider.value} K`;
       particleValue.textContent = particleSlider.value;
-      wallValue.textContent = `${Math.round(relativeVolume() * 100)} %`;
-      volumeDisplay.textContent = relativeVolume().toFixed(2);
-    }
-
-    function setWallFromSlider() {
-      const fraction = Number(wallSlider.value) / 100;
-      box.right = box.left + (box.rightBase - box.left) * fraction;
-      box.right = clamp(box.right, box.minRight, box.rightBase);
-      state.previousWallX = box.right;
-      keepParticlesInside();
-      updateLabels();
-      resetMeasurements();
-    }
-
-    function syncSliderToWall() {
-      const fraction = (box.right - box.left) / (box.rightBase - box.left);
-      wallSlider.value = Math.round(fraction * 100);
-      updateLabels();
     }
 
     function makeParticle() {
@@ -402,58 +336,14 @@
       state.pressureImpulseAccumulator = 0;
       state.pressureTimer = 0;
       state.speedAccumulator = 0;
-      state.freePathAccumulator = 0;
       state.sampleCounter = 0;
       state.collisionRate = 0;
       state.pressure = 0;
       state.averageSpeed = 0;
-      state.averageFreePath = 0;
       state.displayPressure = 0;
       state.displayCollisionRate = 0;
       state.displaySpeed = 0;
-      state.displayFreePath = 0;
       state.measureTimer = 0;
-    }
-
-    function pathLengthToNextCollision(p, particleIndex) {
-      const speed = Math.hypot(p.vx, p.vy);
-      if (speed < 1e-8) return 0;
-
-      const dx = p.vx / speed;
-      const dy = p.vy / speed;
-      const distances = [];
-
-      if (dx > 0) distances.push((box.right - p.radius - p.x) / dx);
-      if (dx < 0) distances.push((box.left + p.radius - p.x) / dx);
-      if (dy > 0) distances.push((box.bottom - p.radius - p.y) / dy);
-      if (dy < 0) distances.push((box.top + p.radius - p.y) / dy);
-
-      for (let i = 0; i < state.particles.length; i++) {
-        if (i === particleIndex) continue;
-
-        const other = state.particles[i];
-        const relX = other.x - p.x;
-        const relY = other.y - p.y;
-        const combinedRadius = p.radius + other.radius;
-
-        const projection = relX * dx + relY * dy;
-        if (projection <= 0) continue;
-
-        const perpendicularSquared = relX * relX + relY * relY - projection * projection;
-        const radiusSquared = combinedRadius * combinedRadius;
-
-        if (perpendicularSquared > radiusSquared) continue;
-
-        const offset = Math.sqrt(Math.max(0, radiusSquared - perpendicularSquared));
-        const collisionDistance = projection - offset;
-
-        if (collisionDistance > 0) distances.push(collisionDistance);
-      }
-
-      const positiveDistances = distances.filter(d => d > 0 && Number.isFinite(d));
-      if (!positiveDistances.length) return 0;
-
-      return Math.min(...positiveDistances);
     }
 
     function instantaneousAverageSpeed() {
@@ -461,14 +351,11 @@
       return state.particles.reduce((sum, p) => sum + Math.hypot(p.vx, p.vy), 0) / state.particles.length;
     }
 
-    function instantaneousAverageFreePath() {
-      if (!state.particles.length) return 0;
-      return state.particles.reduce((sum, p, index) => sum + pathLengthToNextCollision(p, index), 0) / state.particles.length;
-    }
-
     function resetSimulation() {
-      setWallFromSlider();
+      box.right = box.rightBase;
+      state.previousWallX = box.right;
       createParticles();
+      keepParticlesInside();
       applyIsothermalThermostat(true);
       resetMeasurements();
     }
@@ -562,21 +449,17 @@
       state.pressureTimer += dt;
 
       state.speedAccumulator += instantaneousAverageSpeed();
-      state.freePathAccumulator += instantaneousAverageFreePath();
       state.sampleCounter += 1;
 
       if (state.measureTimer >= settings.measurementInterval) {
         state.collisionRate = state.sideCollisionCounter / state.measureTimer;
         state.averageSpeed = state.speedAccumulator / Math.max(state.sampleCounter, 1);
-        state.averageFreePath = state.freePathAccumulator / Math.max(state.sampleCounter, 1);
 
         state.displayCollisionRate = state.collisionRate;
         state.displaySpeed = state.averageSpeed;
-        state.displayFreePath = state.averageFreePath;
 
         state.sideCollisionCounter = 0;
         state.speedAccumulator = 0;
-        state.freePathAccumulator = 0;
         state.sampleCounter = 0;
         state.measureTimer = 0;
       }
@@ -596,7 +479,7 @@
     }
 
     function updatePhysics(dt) {
-      state.wallSpeed = (box.right - state.previousWallX) / Math.max(dt, 1e-6);
+      state.wallSpeed = 0;
       state.previousWallX = box.right;
 
       for (const p of state.particles) {
@@ -639,16 +522,9 @@
       ctx.moveTo(box.left, box.top);
       ctx.lineTo(box.left, box.bottom);
       ctx.lineTo(box.right, box.bottom);
-      ctx.moveTo(box.left, box.top);
       ctx.lineTo(box.right, box.top);
+      ctx.lineTo(box.left, box.top);
       ctx.stroke();
-
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(box.right - box.wallThickness / 2, box.top, box.wallThickness, currentHeight());
-
-      const handleY = (box.top + box.bottom) / 2 - box.handleHeight / 2;
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.58)';
-      ctx.fillRect(box.right - 12, handleY, 24, box.handleHeight);
 
       ctx.restore();
     }
@@ -667,8 +543,7 @@
       ctx.save();
       ctx.fillStyle = '#cbd5e1';
       ctx.font = '16px Arial';
-      ctx.fillText('Bewegliche Wand', box.right - 76, box.top - 18);
-      ctx.fillText(`Volumen: ${relativeVolume().toFixed(2)}`, box.left + 8, box.bottom + 34);
+      ctx.fillText('Fester Behälter', box.left + 8, box.top - 18);
       ctx.restore();
     }
 
@@ -683,9 +558,7 @@
     function updateStats() {
       collisionRateDisplay.textContent = state.displayCollisionRate.toFixed(0);
       pressureDisplay.textContent = `${state.displayPressure.toFixed(1)} hPa`;
-      volumeDisplay.textContent = relativeVolume().toFixed(2);
       speedDisplay.textContent = `${state.displaySpeed.toFixed(1)} px/s`;
-      freePathDisplay.textContent = `${state.displayFreePath.toFixed(1)} px`;
     }
 
     function animate(timestamp) {
@@ -703,49 +576,6 @@
       updateStats();
       requestAnimationFrame(animate);
     }
-
-    function getCanvasX(event) {
-      const rect = canvas.getBoundingClientRect();
-      return (event.clientX - rect.left) * (canvas.width / rect.width);
-    }
-
-    function isOnWallHandle(x, y) {
-      const handleY = (box.top + box.bottom) / 2 - box.handleHeight / 2;
-      return x >= box.right - 16 && x <= box.right + 16 && y >= handleY && y <= handleY + box.handleHeight;
-    }
-
-    canvas.addEventListener('pointerdown', (event) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = (event.clientX - rect.left) * (canvas.width / rect.width);
-      const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-
-      if (isOnWallHandle(x, y)) {
-        state.dragWall = true;
-        state.dragOffsetX = x - box.right;
-        canvas.setPointerCapture(event.pointerId);
-      }
-    });
-
-    canvas.addEventListener('pointermove', (event) => {
-      if (!state.dragWall) return;
-
-      const x = getCanvasX(event) - state.dragOffsetX;
-      box.right = clamp(x, box.minRight, box.rightBase);
-      keepParticlesInside();
-      syncSliderToWall();
-    });
-
-    canvas.addEventListener('pointerup', (event) => {
-      if (state.dragWall) {
-        state.dragWall = false;
-        canvas.releasePointerCapture(event.pointerId);
-        resetMeasurements();
-      }
-    });
-
-    wallSlider.addEventListener('input', () => {
-      setWallFromSlider();
-    });
 
     temperatureSlider.addEventListener('input', () => {
       updateLabels();
@@ -765,7 +595,6 @@
     });
 
     resetBtn.addEventListener('click', () => {
-      wallSlider.value = 100;
       resetSimulation();
     });
 
