@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Druck im Teilchenmodell</title>
+  <title>Ideales Gas im Teilchenmodell</title>
   <style>
     :root {
       --bg1: #020617;
@@ -155,7 +155,7 @@
 <body>
   <div class="app">
     <section class="panel">
-      <h1>Druck im Teilchenmodell</h1>
+      <h1>Ideales Gas im Teilchenmodell</h1>
 
       <div class="group">
         <label for="temperatureSlider">
@@ -190,8 +190,8 @@
         </div>
 
         <div class="info-card full-width">
-          <div class="label">mittlere Geschwindigkeit</div>
-          <div class="number" id="speedDisplay">0.0 px/s</div>
+          <div class="label">mittlere Geschwindigkeit (nicht skaliert)</div>
+          <div class="number" id="speedDisplay">0.0 m/s</div>
         </div>
       </div>
     </section>
@@ -228,7 +228,26 @@
       bottom: 610,
       rightBase: 800,
       right: 800,
-      wallThickness: 10,
+    };
+
+    const physicalConstants = {
+      gasConstant: 8.314462618,
+      molarMassAir: 0.02897
+    };
+
+    /*
+      Die Simulation bewegt die Teilchen intern in px/s,
+      zeigt die mittlere Geschwindigkeit aber physikalisch in m/s an.
+
+      Grundlage:
+      mittlere Maxwell-Boltzmann-Geschwindigkeit:
+      <v> = sqrt(8RT / (pi M))
+
+      Modellgas: Luft
+      molare Masse M = 0.02897 kg/mol
+    */
+    const speedConversion = {
+      pixelsPerMeter: 170 / meanMaxwellBoltzmannSpeed(300)
     };
 
     const settings = {
@@ -264,8 +283,6 @@
       displaySpeed: 0,
 
       measureTimer: 0,
-      wallSpeed: 0,
-      previousWallX: box.right,
     };
 
     function rand(min, max) {
@@ -276,18 +293,27 @@
       return Math.max(min, Math.min(max, value));
     }
 
-    function currentWidth() {
-      return box.right - box.left;
-    }
-
     function currentHeight() {
       return box.bottom - box.top;
     }
 
+    function meanMaxwellBoltzmannSpeed(T) {
+      return Math.sqrt(
+        (8 * physicalConstants.gasConstant * T) /
+        (Math.PI * physicalConstants.molarMassAir)
+      );
+    }
+
+    function physicalSpeedToCanvasSpeed(speedInMetersPerSecond) {
+      return speedInMetersPerSecond * speedConversion.pixelsPerMeter;
+    }
+
+    function canvasSpeedToPhysicalSpeed(speedInPixelsPerSecond) {
+      return speedInPixelsPerSecond / speedConversion.pixelsPerMeter;
+    }
+
     function temperatureToTargetSpeed(T) {
-      const referenceTemperature = 300;
-      const referenceSpeed = 170;
-      return referenceSpeed * Math.sqrt(T / referenceTemperature);
+      return physicalSpeedToCanvasSpeed(meanMaxwellBoltzmannSpeed(T));
     }
 
     function updateLabels() {
@@ -353,7 +379,6 @@
 
     function resetSimulation() {
       box.right = box.rightBase;
-      state.previousWallX = box.right;
       createParticles();
       keepParticlesInside();
       applyIsothermalThermostat(true);
@@ -415,7 +440,7 @@
       state.pressureImpulseAccumulator += deltaP;
     }
 
-    function reflectAtWalls(p, wallSpeed) {
+    function reflectAtWalls(p) {
       if (p.x - p.radius <= box.left) {
         p.x = box.left + p.radius;
         const oldVx = p.vx;
@@ -435,12 +460,9 @@
 
       if (p.x + p.radius >= box.right) {
         p.x = box.right - p.radius;
-        const relativeVx = p.vx - wallSpeed;
-        const newRelativeVx = -relativeVx;
-        const newVx = wallSpeed + newRelativeVx;
-        const deltaP = p.mass * Math.abs(newVx - p.vx);
-        p.vx = newVx;
-        countSideWallCollision(deltaP);
+        const oldVx = p.vx;
+        p.vx = -Math.abs(p.vx);
+        countSideWallCollision(p.mass * Math.abs(p.vx - oldVx));
       }
     }
 
@@ -456,7 +478,7 @@
         state.averageSpeed = state.speedAccumulator / Math.max(state.sampleCounter, 1);
 
         state.displayCollisionRate = state.collisionRate;
-        state.displaySpeed = state.averageSpeed;
+        state.displaySpeed = canvasSpeedToPhysicalSpeed(state.averageSpeed);
 
         state.sideCollisionCounter = 0;
         state.speedAccumulator = 0;
@@ -479,13 +501,10 @@
     }
 
     function updatePhysics(dt) {
-      state.wallSpeed = 0;
-      state.previousWallX = box.right;
-
       for (const p of state.particles) {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        reflectAtWalls(p, state.wallSpeed);
+        reflectAtWalls(p);
       }
 
       for (let i = 0; i < state.particles.length; i++) {
@@ -558,7 +577,7 @@
     function updateStats() {
       collisionRateDisplay.textContent = state.displayCollisionRate.toFixed(0);
       pressureDisplay.textContent = `${state.displayPressure.toFixed(1)} hPa`;
-      speedDisplay.textContent = `${state.displaySpeed.toFixed(1)} px/s`;
+      speedDisplay.textContent = `${state.displaySpeed.toFixed(1)} m/s`;
     }
 
     function animate(timestamp) {
