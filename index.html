@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ideales Gas im Teilchenmodell</title>
+  <title>Druck im Teilchenmodell</title>
   <style>
     :root {
       --bg1: #020617;
@@ -155,7 +155,7 @@
 <body>
   <div class="app">
     <section class="panel">
-      <h1>Ideales Gas im Teilchenmodell</h1>
+      <h1>Druck im Teilchenmodell</h1>
 
       <div class="group">
         <label for="temperatureSlider">
@@ -190,7 +190,7 @@
         </div>
 
         <div class="info-card full-width">
-          <div class="label">mittlere Geschwindigkeit (nicht skaliert)</div>
+          <div class="label">mittlere Geschwindigkeit</div>
           <div class="number" id="speedDisplay">0.0 m/s</div>
         </div>
       </div>
@@ -236,15 +236,83 @@
     };
 
     /*
-      Die Simulation bewegt die Teilchen intern in px/s,
-      zeigt die mittlere Geschwindigkeit aber physikalisch in m/s an.
+      Mittlere Geschwindigkeit nach Maxwell-Boltzmann:
 
-      Grundlage:
-      mittlere Maxwell-Boltzmann-Geschwindigkeit:
       <v> = sqrt(8RT / (pi M))
 
+      R: universelle Gaskonstante
+      T: Temperatur in Kelvin
+      M: molare Masse des Modellgases
+
       Modellgas: Luft
-      molare Masse M = 0.02897 kg/mol
+      M = 0.02897 kg/mol
+    */
+    function meanMaxwellBoltzmannSpeed(T) {
+      return Math.sqrt(
+        (8 * physicalConstants.gasConstant * T) /
+        (Math.PI * physicalConstants.molarMassAir)
+      );
+    }
+
+    /*
+      Quadratische Mittelgeschwindigkeit:
+
+      v_rms = sqrt(3RT / M)
+
+      Diese Größe wird für die Temperaturstabilisierung des Ensembles verwendet.
+      Dadurch bleibt die Maxwell-Boltzmann-Verteilung erhalten, weil alle
+      Geschwindigkeiten nur gemeinsam skaliert werden.
+    */
+    function rmsMaxwellBoltzmannSpeed(T) {
+      return Math.sqrt(
+        (3 * physicalConstants.gasConstant * T) /
+        physicalConstants.molarMassAir
+      );
+    }
+
+    /*
+      Gaußverteilte Zufallszahl mit Mittelwert 0 und Standardabweichung 1.
+      Box-Muller-Verfahren.
+    */
+    function sampleGaussian() {
+      let u1 = 0;
+      let u2 = 0;
+
+      while (u1 === 0) u1 = Math.random();
+      while (u2 === 0) u2 = Math.random();
+
+      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    }
+
+    /*
+      Maxwell-Boltzmann-verteilte Geschwindigkeit.
+
+      Idee:
+      Bei einem idealen Gas sind die drei Geschwindigkeitskomponenten
+      vx, vy, vz normalverteilt mit
+
+      sigma = sqrt(RT / M)
+
+      Der Betrag v = sqrt(vx² + vy² + vz²) folgt dann der
+      Maxwell-Boltzmann-Geschwindigkeitsverteilung.
+    */
+    function sampleMaxwellBoltzmannSpeed(T) {
+      const sigma = Math.sqrt(
+        physicalConstants.gasConstant * T /
+        physicalConstants.molarMassAir
+      );
+
+      const vx = sampleGaussian() * sigma;
+      const vy = sampleGaussian() * sigma;
+      const vz = sampleGaussian() * sigma;
+
+      return Math.sqrt(vx * vx + vy * vy + vz * vz);
+    }
+
+    /*
+      Die Animation läuft intern in px/s.
+      Die physikalischen Geschwindigkeiten werden so skaliert, dass die
+      Bewegung auf dem Canvas sichtbar und didaktisch brauchbar bleibt.
     */
     const speedConversion = {
       pixelsPerMeter: 170 / meanMaxwellBoltzmannSpeed(300)
@@ -257,7 +325,13 @@
       pressureScale: 0.28,
       measurementInterval: 2.0,
       pressureMeasurementInterval: 5.0,
-      thermostatStrength: 0.08,
+
+      /*
+        Der Thermostat skaliert das Ensemble gemeinsam.
+        Dadurch bleiben schnelle Teilchen schnell und langsame Teilchen langsam;
+        die Verteilungsform wird nicht zerstört.
+      */
+      thermostatStrength: 0.04,
     };
 
     const state = {
@@ -271,16 +345,11 @@
       pressureImpulseAccumulator: 0,
       pressureTimer: 0,
 
-      speedAccumulator: 0,
-      sampleCounter: 0,
-
       collisionRate: 0,
       pressure: 0,
-      averageSpeed: 0,
 
       displayPressure: 0,
       displayCollisionRate: 0,
-      displaySpeed: 0,
 
       measureTimer: 0,
     };
@@ -297,13 +366,6 @@
       return box.bottom - box.top;
     }
 
-    function meanMaxwellBoltzmannSpeed(T) {
-      return Math.sqrt(
-        (8 * physicalConstants.gasConstant * T) /
-        (Math.PI * physicalConstants.molarMassAir)
-      );
-    }
-
     function physicalSpeedToCanvasSpeed(speedInMetersPerSecond) {
       return speedInMetersPerSecond * speedConversion.pixelsPerMeter;
     }
@@ -316,16 +378,38 @@
       return physicalSpeedToCanvasSpeed(meanMaxwellBoltzmannSpeed(T));
     }
 
+    function temperatureToTargetRmsSpeed(T) {
+      return physicalSpeedToCanvasSpeed(rmsMaxwellBoltzmannSpeed(T));
+    }
+
     function updateLabels() {
       temperatureValue.textContent = `${temperatureSlider.value} K`;
       particleValue.textContent = particleSlider.value;
+    }
+
+    function updateTheoreticalSpeedDisplay() {
+      const temperature = Number(temperatureSlider.value);
+      const theoreticalMeanSpeed = meanMaxwellBoltzmannSpeed(temperature);
+      speedDisplay.textContent = `${theoreticalMeanSpeed.toFixed(1)} m/s`;
     }
 
     function makeParticle() {
       const radius = settings.particleRadius;
       const x = rand(box.left + radius + 6, box.right - radius - 6);
       const y = rand(box.top + radius + 6, box.bottom - radius - 6);
-      const speed = temperatureToTargetSpeed(Number(temperatureSlider.value)) * rand(0.8, 1.2);
+
+      /*
+        Hier entsteht die Maxwell-Boltzmann-Verteilung:
+        Jedes Teilchen erhält eine andere Geschwindigkeit.
+      */
+      const physicalSpeed = sampleMaxwellBoltzmannSpeed(Number(temperatureSlider.value));
+      const speed = physicalSpeedToCanvasSpeed(physicalSpeed);
+
+      /*
+        Da die Darstellung zweidimensional ist, wird der Betrag der
+        dreidimensional verteilten Geschwindigkeit in eine zufällige
+        2D-Bewegungsrichtung gelegt.
+      */
       const angle = rand(0, Math.PI * 2);
 
       return {
@@ -361,47 +445,72 @@
       state.sideImpulseAccumulator = 0;
       state.pressureImpulseAccumulator = 0;
       state.pressureTimer = 0;
-      state.speedAccumulator = 0;
-      state.sampleCounter = 0;
       state.collisionRate = 0;
       state.pressure = 0;
-      state.averageSpeed = 0;
       state.displayPressure = 0;
       state.displayCollisionRate = 0;
-      state.displaySpeed = 0;
       state.measureTimer = 0;
     }
 
-    function instantaneousAverageSpeed() {
+    function instantaneousRmsSpeed() {
       if (!state.particles.length) return 0;
-      return state.particles.reduce((sum, p) => sum + Math.hypot(p.vx, p.vy), 0) / state.particles.length;
+
+      const meanSquareSpeed =
+        state.particles.reduce((sum, p) => {
+          const speedSquared = p.vx * p.vx + p.vy * p.vy;
+          return sum + speedSquared;
+        }, 0) / state.particles.length;
+
+      return Math.sqrt(meanSquareSpeed);
     }
 
     function resetSimulation() {
       box.right = box.rightBase;
       createParticles();
       keepParticlesInside();
-      applyIsothermalThermostat(true);
+
+      /*
+        Beim Neustart wird nur die Ensemble-Energie passend skaliert.
+        Die Geschwindigkeiten bleiben unterschiedlich verteilt.
+      */
+      applyMaxwellBoltzmannThermostat(true);
+
       resetMeasurements();
+      updateTheoreticalSpeedDisplay();
     }
 
-    function applyIsothermalThermostat(force = false) {
-      const target = temperatureToTargetSpeed(Number(temperatureSlider.value));
+    /*
+      Wichtig:
+      Dieser Thermostat setzt die Teilchen NICHT einzeln auf dieselbe
+      Geschwindigkeit. Stattdessen berechnet er die aktuelle quadratische
+      Mittelgeschwindigkeit und skaliert alle Geschwindigkeitsvektoren
+      gemeinsam. So bleibt die Maxwell-Boltzmann-artige Verteilung erhalten.
+    */
+    function applyMaxwellBoltzmannThermostat(force = false) {
+      if (!state.particles.length) return;
+
+      const targetRms = temperatureToTargetRmsSpeed(Number(temperatureSlider.value));
+      const currentRms = instantaneousRmsSpeed();
+
+      if (currentRms < 1e-8) {
+        for (const p of state.particles) {
+          const physicalSpeed = sampleMaxwellBoltzmannSpeed(Number(temperatureSlider.value));
+          const speed = physicalSpeedToCanvasSpeed(physicalSpeed);
+          const angle = rand(0, Math.PI * 2);
+
+          p.vx = Math.cos(angle) * speed;
+          p.vy = Math.sin(angle) * speed;
+        }
+        return;
+      }
+
+      const rawScale = targetRms / currentRms;
       const strength = force ? 1 : settings.thermostatStrength;
+      const scale = 1 + (rawScale - 1) * strength;
 
       for (const p of state.particles) {
-        const speed = Math.hypot(p.vx, p.vy);
-
-        if (speed < 1e-8) {
-          const angle = rand(0, Math.PI * 2);
-          p.vx = Math.cos(angle) * target;
-          p.vy = Math.sin(angle) * target;
-          continue;
-        }
-
-        const factor = 1 + (target / speed - 1) * strength;
-        p.vx *= factor;
-        p.vy *= factor;
+        p.vx *= scale;
+        p.vy *= scale;
       }
     }
 
@@ -470,19 +579,11 @@
       state.measureTimer += dt;
       state.pressureTimer += dt;
 
-      state.speedAccumulator += instantaneousAverageSpeed();
-      state.sampleCounter += 1;
-
       if (state.measureTimer >= settings.measurementInterval) {
         state.collisionRate = state.sideCollisionCounter / state.measureTimer;
-        state.averageSpeed = state.speedAccumulator / Math.max(state.sampleCounter, 1);
-
         state.displayCollisionRate = state.collisionRate;
-        state.displaySpeed = canvasSpeedToPhysicalSpeed(state.averageSpeed);
 
         state.sideCollisionCounter = 0;
-        state.speedAccumulator = 0;
-        state.sampleCounter = 0;
         state.measureTimer = 0;
       }
 
@@ -513,7 +614,7 @@
         }
       }
 
-      applyIsothermalThermostat(false);
+      applyMaxwellBoltzmannThermostat(false);
       updateMeasurements(dt);
     }
 
@@ -549,9 +650,18 @@
     }
 
     function drawParticles() {
-      ctx.fillStyle = 'rgba(125, 211, 252, 0.96)';
-
       for (const p of state.particles) {
+        const speed = Math.hypot(p.vx, p.vy);
+        const physicalSpeed = canvasSpeedToPhysicalSpeed(speed);
+        const meanSpeed = meanMaxwellBoltzmannSpeed(Number(temperatureSlider.value));
+
+        /*
+          Schnellere Teilchen werden heller gezeichnet.
+          Dadurch wird die Geschwindigkeitsverteilung sichtbar.
+        */
+        const brightness = clamp(0.45 + physicalSpeed / (2.4 * meanSpeed), 0.45, 1);
+
+        ctx.fillStyle = `rgba(125, 211, 252, ${brightness})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
@@ -577,7 +687,7 @@
     function updateStats() {
       collisionRateDisplay.textContent = state.displayCollisionRate.toFixed(0);
       pressureDisplay.textContent = `${state.displayPressure.toFixed(1)} hPa`;
-      speedDisplay.textContent = `${state.displaySpeed.toFixed(1)} m/s`;
+      updateTheoreticalSpeedDisplay();
     }
 
     function animate(timestamp) {
@@ -598,14 +708,22 @@
 
     temperatureSlider.addEventListener('input', () => {
       updateLabels();
-      applyIsothermalThermostat(true);
+
+      /*
+        Bei Temperaturänderung wird eine neue Maxwell-Boltzmann-Verteilung
+        erzeugt, damit die Geschwindigkeitsverteilung direkt zur neuen
+        Temperatur passt.
+      */
+      createParticles();
+      applyMaxwellBoltzmannThermostat(true);
       resetMeasurements();
+      updateTheoreticalSpeedDisplay();
     });
 
     particleSlider.addEventListener('input', () => {
       updateLabels();
       createParticles();
-      applyIsothermalThermostat(true);
+      applyMaxwellBoltzmannThermostat(true);
     });
 
     toggleBtn.addEventListener('click', () => {
@@ -618,6 +736,7 @@
     });
 
     updateLabels();
+    updateTheoreticalSpeedDisplay();
     resetSimulation();
     requestAnimationFrame(animate);
   </script>
