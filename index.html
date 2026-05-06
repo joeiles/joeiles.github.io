@@ -2,933 +2,539 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ideales Gas im Teilchenmodell</title>
+  <title>Superposition ebener Wellen</title>
   <style>
-    :root {
-      --bg1: #020617;
-      --bg2: #0f172a;
-      --panel: rgba(15, 23, 42, 0.94);
-      --card: rgba(30, 41, 59, 0.92);
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
+    :root{
+      --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af;
+      --accent:#38bdf8; --accent2:#a78bfa; --good:#34d399;
+      --warn:#fbbf24;
     }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Arial, Helvetica, sans-serif;
-      color: var(--text);
-      background: linear-gradient(160deg, var(--bg1), var(--bg2) 60%, #111827);
-      padding: 14px;
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,sans-serif;
+      background:linear-gradient(180deg,var(--bg),#020617);
+      color:var(--text);
+      padding:20px
     }
-
-    .app {
-      width: min(1060px, 100%);
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 14px;
+    .layout{
+      display:grid;
+      grid-template-columns:380px 1fr;
+      gap:20px;
+      align-items:start
     }
-
-    .panel, .stage {
-      background: var(--panel);
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      border-radius: 18px;
-      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+    .panel{
+      background:var(--panel);
+      border-radius:12px;
+      padding:20px;
+      box-shadow:0 10px 15px rgba(0,0,0,0.3)
     }
-
-    .panel { padding: 14px; }
-
-    h1 {
-      margin: 0 0 12px;
-      font-size: 1.42rem;
-      color: white;
+    canvas{
+      background:#020617;
+      border-radius:8px;
+      width:100%;
+      margin-bottom:10px;
+      display:block
     }
-
-    .group {
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      border-radius: 14px;
-      padding: 10px;
-      margin-bottom: 10px;
+    .control{margin-bottom:14px}
+    .label-row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:5px;
+      font-size:0.92rem
     }
-
-    label {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-weight: bold;
-      margin-bottom: 7px;
-      font-size: 0.92rem;
+    .label-row span:last-child{
+      color:var(--muted);
+      font-variant-numeric:tabular-nums
     }
-
-    .value {
-      color: var(--accent);
-      min-width: 72px;
-      text-align: right;
+    select,input[type="range"]{
+      width:100%;
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #374151;
+      background:#111827;
+      color:white
     }
-
-    input[type="range"] {
-      width: 100%;
-      accent-color: var(--accent);
-      cursor: pointer;
+    button{
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #374151;
+      background:#1e293b;
+      color:white;
+      cursor:pointer;
+      font-weight:bold;
+      margin-top:5px
     }
-
-    .buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 8px;
+    button:hover{background:#334155}
+    .check-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:5px 0;
+      font-size:0.9rem;
+      line-height:1.2
     }
-
-    button {
-      border: none;
-      border-radius: 10px;
-      padding: 9px 10px;
-      font-size: 0.88rem;
-      font-weight: bold;
-      cursor: pointer;
-      color: white;
-      transition: transform 0.15s ease;
-    }
-
-    button:hover { transform: translateY(-1px); }
-    button:active { transform: translateY(1px); }
-
-    .primary { background: linear-gradient(135deg, #0ea5e9, #2563eb); }
-    .secondary { background: linear-gradient(135deg, #22c55e, #16a34a); }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .info-card {
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      border-radius: 12px;
-      padding: 9px;
-    }
-
-    .info-card.full-width { grid-column: 1 / -1; }
-
-    .info-card .label {
-      color: var(--muted);
-      font-size: 0.76rem;
-      margin-bottom: 5px;
-      line-height: 1.22;
-      font-weight: normal;
-    }
-
-    .info-card .number {
-      font-size: 1rem;
-      font-weight: bold;
-      color: white;
-    }
-
-    .stage {
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 0.84rem;
-    }
-
-    .dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 5px;
-      vertical-align: middle;
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 470px;
-      background: radial-gradient(circle at 50% 50%, #0b1220, #020617 82%);
-      border-radius: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.14);
-    }
-
-    .free-path-note {
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      border-radius: 12px;
-      padding: 9px 11px;
-      color: var(--muted);
-      font-size: 0.82rem;
-      line-height: 1.35;
-      margin: 0;
-    }
-
-    @media (max-width: 1120px) {
-      .app { grid-template-columns: 1fr; }
-      canvas { height: 460px; }
-    }
-
-    @media (max-width: 600px) {
-      .info-grid { grid-template-columns: 1fr; }
-      canvas { height: 380px; }
+    .check-row input{margin:0}
+    .hidden{display:none !important}
+    .small-note{
+      color:var(--muted);
+      font-size:0.88rem;
+      margin-top:6px
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <section class="panel">
-      <h1>Ideales Gas im Teilchenmodell</h1>
-
-      <div class="group">
-        <label for="temperatureSlider">
-          <span>Temperatur</span>
-          <span class="value" id="temperatureValue">300 K</span>
-        </label>
-        <input id="temperatureSlider" type="range" min="180" max="700" step="10" value="300">
-      </div>
-
-      <div class="group">
-        <label for="particleSlider">
-          <span>Teilchenzahl</span>
-          <span class="value" id="particleValue">120</span>
-        </label>
-        <input id="particleSlider" type="range" min="40" max="500" step="10" value="120">
-      </div>
-
-      <div class="group">
-        <label for="wallSlider">
-          <span>Volumen über Wand</span>
-          <span class="value" id="wallValue">100 %</span>
-        </label>
-        <input id="wallSlider" type="range" min="25" max="100" step="1" value="100">
-      </div>
-
-      <div class="buttons">
-        <button class="primary" id="toggleBtn">Pause</button>
-        <button class="secondary" id="resetBtn">Neu starten</button>
-      </div>
-
-      <div class="info-grid">
-        <div class="info-card">
-          <div class="label">Kollisionen mit den Wänden/s</div>
-          <div class="number" id="collisionRateDisplay">0</div>
-        </div>
-
-        <div class="info-card">
-          <div class="label">Druck</div>
-          <div class="number" id="pressureDisplay">0.0 hPa</div>
-        </div>
-
-        <div class="info-card">
-          <div class="label">mittlere Geschwindigkeit</div>
-          <div class="number" id="speedDisplay">0.0 m/s</div>
-        </div>
-
-        <div class="info-card">
-          <div class="label">mittlere freie Weglänge</div>
-          <div class="number" id="freePathDisplay">0.0 px</div>
-        </div>
-
-        <div class="info-card full-width">
-          <div class="label">relatives Volumen des Behälters</div>
-          <div class="number" id="volumeDisplay">1.00</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="stage">
-      <div class="legend">
-        <span><span class="dot" style="background:#7dd3fc"></span>Gasteilchen</span>
-        <span><span class="dot" style="background:#f59e0b"></span>bewegliche Wand</span>
-      </div>
-
-      <canvas id="canvas" width="900" height="680"></canvas>
-
-      <p class="free-path-note">
-        <strong>Mittlere freie Weglänge:</strong> Sie beschreibt hier die Strecke, die ein Teilchen in seiner momentanen Bewegungsrichtung bis zur nächsten Kollision mit einem anderen Teilchen oder einer Wand zurücklegen würde.
-      </p>
-    </section>
-  </div>
-
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const temperatureSlider = document.getElementById('temperatureSlider');
-    const particleSlider = document.getElementById('particleSlider');
-    const wallSlider = document.getElementById('wallSlider');
-
-    const temperatureValue = document.getElementById('temperatureValue');
-    const particleValue = document.getElementById('particleValue');
-    const wallValue = document.getElementById('wallValue');
-
-    const collisionRateDisplay = document.getElementById('collisionRateDisplay');
-    const pressureDisplay = document.getElementById('pressureDisplay');
-    const volumeDisplay = document.getElementById('volumeDisplay');
-    const speedDisplay = document.getElementById('speedDisplay');
-    const freePathDisplay = document.getElementById('freePathDisplay');
-
-    const toggleBtn = document.getElementById('toggleBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    const box = {
-      left: 80,
-      top: 70,
-      bottom: 610,
-      rightBase: 800,
-      right: 800,
-      minRight: 260,
-      wallThickness: 10,
-      handleHeight: 150,
-    };
-
-    const physicalConstants = {
-      gasConstant: 8.314462618,
-      molarMassAir: 0.02897
-    };
-
-    function meanMaxwellBoltzmannSpeed(T) {
-      return Math.sqrt(
-        (8 * physicalConstants.gasConstant * T) /
-        (Math.PI * physicalConstants.molarMassAir)
-      );
-    }
-
-    function rmsMaxwellBoltzmannSpeed(T) {
-      return Math.sqrt(
-        (3 * physicalConstants.gasConstant * T) /
-        physicalConstants.molarMassAir
-      );
-    }
-
-    function sampleGaussian() {
-      let u1 = 0;
-      let u2 = 0;
-
-      while (u1 === 0) u1 = Math.random();
-      while (u2 === 0) u2 = Math.random();
-
-      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-    }
-
-    function sampleMaxwellBoltzmannSpeed(T) {
-      const sigma = Math.sqrt(
-        physicalConstants.gasConstant * T /
-        physicalConstants.molarMassAir
-      );
-
-      const vx = sampleGaussian() * sigma;
-      const vy = sampleGaussian() * sigma;
-      const vz = sampleGaussian() * sigma;
-
-      return Math.sqrt(vx * vx + vy * vy + vz * vz);
-    }
-
-    const speedConversion = {
-      referenceTemperature: 300,
-      referenceCanvasSpeed: 170,
-      pixelsPerMeter: 170 / meanMaxwellBoltzmannSpeed(300)
-    };
-
-    const settings = {
-      particleRadius: 4,
-      particleMass: 1,
-      maxDt: 0.018,
-      pressureScale: 0.28,
-
-      /*
-        Druck, Kollisionen und mittlere freie Weglänge
-        werden über jeweils 2 Sekunden gemittelt.
-      */
-      measurementInterval: 2.0,
-
-      thermostatStrength: 0.04,
-    };
-
-    const state = {
-      running: true,
-      particles: [],
-      lastTime: 0,
-
-      sideCollisionCounter: 0,
-      sideImpulseAccumulator: 0,
-
-      collisionRateAccumulator: 0,
-      pressureAccumulator: 0,
-      freePathAccumulator: 0,
-
-      collisionRate: 0,
-      pressure: 0,
-      averageFreePath: 0,
-
-      displayPressure: 0,
-      displayCollisionRate: 0,
-      displayFreePath: 0,
-
-      measureTimer: 0,
-      dragWall: false,
-      dragOffsetX: 0,
-      wallSpeed: 0,
-      previousWallX: box.right,
-    };
-
-    function rand(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-    }
-
-    function currentWidth() {
-      return box.right - box.left;
-    }
-
-    function currentHeight() {
-      return box.bottom - box.top;
-    }
-
-    function relativeVolume() {
-      return currentWidth() / (box.rightBase - box.left);
-    }
-
-    function physicalSpeedToCanvasSpeed(speedInMetersPerSecond) {
-      return speedInMetersPerSecond * speedConversion.pixelsPerMeter;
-    }
-
-    function canvasSpeedToPhysicalSpeed(speedInPixelsPerSecond) {
-      return speedInPixelsPerSecond / speedConversion.pixelsPerMeter;
-    }
-
-    function temperatureToTargetRmsSpeed(T) {
-      return physicalSpeedToCanvasSpeed(rmsMaxwellBoltzmannSpeed(T));
-    }
-
-    function updateLabels() {
-      temperatureValue.textContent = `${temperatureSlider.value} K`;
-      particleValue.textContent = particleSlider.value;
-      wallValue.textContent = `${Math.round(relativeVolume() * 100)} %`;
-      volumeDisplay.textContent = relativeVolume().toFixed(2);
-    }
-
-    function updateTheoreticalSpeedDisplay() {
-      const temperature = Number(temperatureSlider.value);
-      const theoreticalMeanSpeed = meanMaxwellBoltzmannSpeed(temperature);
-      speedDisplay.textContent = `${theoreticalMeanSpeed.toFixed(1)} m/s`;
-    }
-
-    function setWallFromSlider() {
-      const fraction = Number(wallSlider.value) / 100;
-      box.right = box.left + (box.rightBase - box.left) * fraction;
-      box.right = clamp(box.right, box.minRight, box.rightBase);
-      state.previousWallX = box.right;
-      keepParticlesInside();
-      updateLabels();
-      resetMeasurements();
-    }
-
-    function syncSliderToWall() {
-      const fraction = (box.right - box.left) / (box.rightBase - box.left);
-      wallSlider.value = Math.round(fraction * 100);
-      updateLabels();
-    }
-
-    function makeParticle() {
-      const radius = settings.particleRadius;
-      const x = rand(box.left + radius + 6, box.right - radius - 6);
-      const y = rand(box.top + radius + 6, box.bottom - radius - 6);
-
-      const physicalSpeed = sampleMaxwellBoltzmannSpeed(Number(temperatureSlider.value));
-      const speed = physicalSpeedToCanvasSpeed(physicalSpeed);
-      const angle = rand(0, Math.PI * 2);
-
-      return {
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        radius,
-        mass: settings.particleMass,
-      };
-    }
-
-    function createParticles() {
-      state.particles = [];
-      const count = Number(particleSlider.value);
-
-      for (let i = 0; i < count; i++) {
-        state.particles.push(makeParticle());
-      }
-
-      resetMeasurements();
-    }
-
-    function keepParticlesInside() {
-      for (const p of state.particles) {
-        p.x = clamp(p.x, box.left + p.radius + 1, box.right - p.radius - 1);
-        p.y = clamp(p.y, box.top + p.radius + 1, box.bottom - p.radius - 1);
-      }
-    }
-
-    function resetMeasurements() {
-      state.sideCollisionCounter = 0;
-      state.sideImpulseAccumulator = 0;
-
-      state.collisionRateAccumulator = 0;
-      state.pressureAccumulator = 0;
-      state.freePathAccumulator = 0;
-
-      state.collisionRate = 0;
-      state.pressure = 0;
-      state.averageFreePath = 0;
-
-      state.displayPressure = 0;
-      state.displayCollisionRate = 0;
-      state.displayFreePath = 0;
-
-      state.measureTimer = 0;
-      updateTheoreticalSpeedDisplay();
-    }
-
-    function pathLengthToNextCollision(p, particleIndex) {
-      const speed = Math.hypot(p.vx, p.vy);
-      if (speed < 1e-8) return 0;
-
-      const dx = p.vx / speed;
-      const dy = p.vy / speed;
-      const distances = [];
-
-      if (dx > 0) distances.push((box.right - p.radius - p.x) / dx);
-      if (dx < 0) distances.push((box.left + p.radius - p.x) / dx);
-      if (dy > 0) distances.push((box.bottom - p.radius - p.y) / dy);
-      if (dy < 0) distances.push((box.top + p.radius - p.y) / dy);
-
-      for (let i = 0; i < state.particles.length; i++) {
-        if (i === particleIndex) continue;
-
-        const other = state.particles[i];
-        const relX = other.x - p.x;
-        const relY = other.y - p.y;
-        const combinedRadius = p.radius + other.radius;
-
-        const projection = relX * dx + relY * dy;
-        if (projection <= 0) continue;
-
-        const perpendicularSquared = relX * relX + relY * relY - projection * projection;
-        const radiusSquared = combinedRadius * combinedRadius;
-
-        if (perpendicularSquared > radiusSquared) continue;
-
-        const offset = Math.sqrt(Math.max(0, radiusSquared - perpendicularSquared));
-        const collisionDistance = projection - offset;
-
-        if (collisionDistance > 0) distances.push(collisionDistance);
-      }
-
-      const positiveDistances = distances.filter(d => d > 0 && Number.isFinite(d));
-      if (!positiveDistances.length) return 0;
-
-      return Math.min(...positiveDistances);
-    }
-
-    function instantaneousAverageFreePath() {
-      if (!state.particles.length) return 0;
-
-      return state.particles.reduce((sum, p, index) => {
-        return sum + pathLengthToNextCollision(p, index);
-      }, 0) / state.particles.length;
-    }
-
-    function instantaneousRmsSpeed() {
-      if (!state.particles.length) return 0;
-
-      const meanSquareSpeed =
-        state.particles.reduce((sum, p) => {
-          const speedSquared = p.vx * p.vx + p.vy * p.vy;
-          return sum + speedSquared;
-        }, 0) / state.particles.length;
-
-      return Math.sqrt(meanSquareSpeed);
-    }
-
-    function instantaneousMeanAbsVx() {
-      if (!state.particles.length) return 0;
-
-      return state.particles.reduce((sum, p) => {
-        return sum + Math.abs(p.vx);
-      }, 0) / state.particles.length;
-    }
-
-    function instantaneousMeanVxSquared() {
-      if (!state.particles.length) return 0;
-
-      return state.particles.reduce((sum, p) => {
-        return sum + p.vx * p.vx;
-      }, 0) / state.particles.length;
-    }
-
-    /*
-      Erwartete Kollisionen mit linker und rechter Wand pro Sekunde.
-      Da die Behälterbreite proportional zum Volumen ist,
-      verhält sich die Rate näherungsweise proportional zu 1/V.
-    */
-    function expectedSideWallCollisionRate() {
-      const width = Math.max(currentWidth(), 1);
-      const n = state.particles.length;
-      const meanAbsVx = instantaneousMeanAbsVx();
-
-      return n * meanAbsVx / width;
-    }
-
-    /*
-      Erwarteter Druck aus dem Impulsfluss auf die vertikalen Wände.
-      Auch dieser Wert enthält die Breite im Nenner und folgt damit
-      näherungsweise p ~ 1/V.
-    */
-    function expectedPressureFromEnsemble() {
-      const width = Math.max(currentWidth(), 1);
-      const sideWallLength = 2 * currentHeight();
-      const n = state.particles.length;
-      const meanVxSquared = instantaneousMeanVxSquared();
-
-      return (
-        (n * settings.particleMass * meanVxSquared / width) /
-        sideWallLength *
-        settings.pressureScale
-      );
-    }
-
-    function resetSimulation() {
-      setWallFromSlider();
-      createParticles();
-      applyMaxwellBoltzmannThermostat(true);
-      resetMeasurements();
-      updateTheoreticalSpeedDisplay();
-    }
-
-    function applyMaxwellBoltzmannThermostat(force = false) {
-      if (!state.particles.length) return;
-
-      const targetRms = temperatureToTargetRmsSpeed(Number(temperatureSlider.value));
-      const currentRms = instantaneousRmsSpeed();
-
-      if (currentRms < 1e-8) {
-        for (const p of state.particles) {
-          const physicalSpeed = sampleMaxwellBoltzmannSpeed(Number(temperatureSlider.value));
-          const speed = physicalSpeedToCanvasSpeed(physicalSpeed);
-          const angle = rand(0, Math.PI * 2);
-
-          p.vx = Math.cos(angle) * speed;
-          p.vy = Math.sin(angle) * speed;
-        }
-        return;
-      }
-
-      const rawScale = targetRms / currentRms;
-      const strength = force ? 1 : settings.thermostatStrength;
-      const scale = 1 + (rawScale - 1) * strength;
-
-      for (const p of state.particles) {
-        p.vx *= scale;
-        p.vy *= scale;
-      }
-    }
-
-    function resolveParticleCollision(a, b) {
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.hypot(dx, dy);
-      const minDist = a.radius + b.radius;
-
-      if (dist === 0 || dist >= minDist) return;
-
-      const nx = dx / dist;
-      const ny = dy / dist;
-      const dvx = a.vx - b.vx;
-      const dvy = a.vy - b.vy;
-      const rel = dvx * nx + dvy * ny;
-      const overlap = minDist - dist;
-
-      a.x -= nx * overlap * 0.5;
-      a.y -= ny * overlap * 0.5;
-      b.x += nx * overlap * 0.5;
-      b.y += ny * overlap * 0.5;
-
-      if (rel <= 0) return;
-
-      const impulse = rel;
-      a.vx -= impulse * nx;
-      a.vy -= impulse * ny;
-      b.vx += impulse * nx;
-      b.vy += impulse * ny;
-    }
-
-    function countSideWallCollision(deltaP) {
-      state.sideCollisionCounter += 1;
-      state.sideImpulseAccumulator += deltaP;
-    }
-
-    function reflectAtWalls(p, wallSpeed) {
-      if (p.x - p.radius <= box.left) {
-        p.x = box.left + p.radius;
-        const oldVx = p.vx;
-        p.vx = Math.abs(p.vx);
-        countSideWallCollision(p.mass * Math.abs(p.vx - oldVx));
-      }
-
-      if (p.y - p.radius <= box.top) {
-        p.y = box.top + p.radius;
-        p.vy = Math.abs(p.vy);
-      }
-
-      if (p.y + p.radius >= box.bottom) {
-        p.y = box.bottom - p.radius;
-        p.vy = -Math.abs(p.vy);
-      }
-
-      if (p.x + p.radius >= box.right) {
-        p.x = box.right - p.radius;
-        const relativeVx = p.vx - wallSpeed;
-        const newRelativeVx = -relativeVx;
-        const newVx = wallSpeed + newRelativeVx;
-        const deltaP = p.mass * Math.abs(newVx - p.vx);
-        p.vx = newVx;
-        countSideWallCollision(deltaP);
-      }
-    }
-
-    function updateMeasurements(dt) {
-      state.measureTimer += dt;
-
-      const expectedCollisionRate = expectedSideWallCollisionRate();
-      const expectedPressure = expectedPressureFromEnsemble();
-      const currentFreePath = instantaneousAverageFreePath();
-
-      state.collisionRateAccumulator += expectedCollisionRate * dt;
-      state.pressureAccumulator += expectedPressure * dt;
-      state.freePathAccumulator += currentFreePath * dt;
-
-      if (state.measureTimer >= settings.measurementInterval) {
-        state.collisionRate = state.collisionRateAccumulator / state.measureTimer;
-        state.pressure = state.pressureAccumulator / state.measureTimer;
-        state.averageFreePath = state.freePathAccumulator / state.measureTimer;
-
-        state.displayCollisionRate = state.collisionRate;
-        state.displayPressure = state.pressure;
-        state.displayFreePath = state.averageFreePath;
-
-        state.sideCollisionCounter = 0;
-        state.sideImpulseAccumulator = 0;
-
-        state.collisionRateAccumulator = 0;
-        state.pressureAccumulator = 0;
-        state.freePathAccumulator = 0;
-
-        state.measureTimer = 0;
-      }
-    }
-
-    function updatePhysics(dt) {
-      state.wallSpeed = (box.right - state.previousWallX) / Math.max(dt, 1e-6);
-      state.previousWallX = box.right;
-
-      for (const p of state.particles) {
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        reflectAtWalls(p, state.wallSpeed);
-      }
-
-      for (let i = 0; i < state.particles.length; i++) {
-        for (let j = i + 1; j < state.particles.length; j++) {
-          resolveParticleCollision(state.particles[i], state.particles[j]);
-        }
-      }
-
-      applyMaxwellBoltzmannThermostat(false);
-      updateMeasurements(dt);
-    }
-
-    function drawBackgroundDots() {
-      ctx.save();
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.04)';
-
-      for (let i = 0; i < 26; i++) {
-        const x = (i * 53) % canvas.width;
-        const y = (i * 101) % canvas.height;
-        ctx.beginPath();
-        ctx.arc(x, y, 1.1, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
-    }
-
-    function drawBox() {
-      ctx.save();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = '#cbd5e1';
-
+<div class="layout">
+  <aside class="panel">
+
+
+    <button id="toggleBtn">▶ Start / ⏸ Pause</button>
+    <button id="resetBtn">↺ Neustart</button>
+
+    <h3>Einstellungen</h3>
+
+<div class="control">
+      <div class="label-row"><span>Messpunkt x</span><span id="vXpos">600</span></div>
+      <input id="xPos" type="range" min="0" max="1200" step="1" value="600">
+    </div>
+
+    <div class="control">
+      <label>Modus A (oberes Diagramm)</label>
+      <select id="modeA">
+        <option value="berg">Berg</option>
+        <option value="tal">Tal</option>
+        <option value="paket">Paket</option>
+        <option value="kontinuierlich" selected>Kontinuierlich</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <label>Modus B (mittleres Diagramm)</label>
+      <select id="modeB">
+        <option value="berg">Berg</option>
+        <option value="tal">Tal</option>
+        <option value="paket">Paket</option>
+        <option value="kontinuierlich" selected>Kontinuierlich</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <div class="label-row"><span>Amplitude A</span><span id="vAamp">1,0 cm</span></div>
+      <input id="aAmp" type="range" min="0" max="2.5" step="0.1" value="1">
+    </div>
+
+    <div class="control">
+      <div class="label-row"><span>Amplitude B</span><span id="vBamp">1,0 cm</span></div>
+      <input id="bAmp" type="range" min="0" max="2.5" step="0.1" value="1">
+    </div>
+
+    <div class="control" id="aLamC">
+      <div class="label-row"><span>Wellenlänge A</span><span id="vAlam">100 cm</span></div>
+      <input id="aLam" type="range" min="40" max="260" step="1" value="100">
+    </div>
+
+    <div class="control" id="bLamC">
+      <div class="label-row"><span>Wellenlänge B</span><span id="vBlam">100 cm</span></div>
+      <input id="bLam" type="range" min="40" max="260" step="1" value="100">
+    </div>
+
+  
+    <div class="control">
+      <div class="label-row"><span>Geschwindigkeit A</span><span id="vAspeed">5 cm/s</span></div>
+      <input id="speedA" type="range" min="0" max="30" step="0.5" value="5">
+    </div>
+
+    <div class="control">
+      <div class="label-row"><span>Geschwindigkeit B</span><span id="vBspeed">5 cm/s</span></div>
+      <input id="speedB" type="range" min="0" max="30" step="0.5" value="5">
+    </div>
+
+
+    <div class="control">
+      <label>Ausbreitungsrichtung A</label>
+      <select id="dirA">
+        <option value="1" selected>links nach rechts</option>
+        <option value="-1">rechts nach links</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <label>Ausbreitungsrichtung B</label>
+      <select id="dirB">
+        <option value="-1" selected>rechts nach links</option>
+        <option value="1">links nach rechts</option>
+      </select>
+    </div>
+
+ <div class="control" id="phaseC">
+      <div class="label-row"><span>Phasenverschiebung B</span><span id="vPhase">0,00 π</span></div>
+      <input id="phase" type="range" min="0" max="6.283185307" step="0.01" value="0">
+      <div class="small-note">Nur bei kontinuierlichen Wellen, gleicher Wellenlänge und gleicher Ausbreitungsgeschwindigkeit sichtbar.</div>
+    </div>
+
+    
+
+    <div style="margin-top:15px">
+        <label class="check-row"><input type="checkbox" id="showPeaks" checked> Darstellung als Perlenkette</label>
+        <label class="check-row"><input type="checkbox" id="showShafts" checked> Momentane Auslenkung der Teilchen</label>
+         <label class="check-row"><input type="checkbox" id="showMP" checked> Messpunkt anzeigen</label>
+         <label>Unteres Diagramm:</label>
+      <label class="check-row"><input type="checkbox" id="showA" checked> Welle A</label>
+      <label class="check-row"><input type="checkbox" id="showB" checked> Welle B</label>
+      <label class="check-row"><input type="checkbox" id="showS" checked> Überlagerung</label>
+      <label class="check-row"><input type="checkbox" id="showX" checked> Zusammensetzung der momentanen Auslenkung am Messpunkt</label>
+      <label>Skalierung: x-Achse: 1 Kästchen entsricht 50 cm, y-Achse: 1 Kästchen entsricht 1 cm, Geschwindigkeit ist nicht skaliert </label>
+      
+    </div>
+  </aside>
+
+  <main>
+    <canvas id="canvasA" width="1200" height="200"></canvas>
+    <canvas id="canvasB" width="1200" height="200"></canvas>
+    <canvas id="canvasS" width="1200" height="400"></canvas>
+  </main>
+</div>
+
+<script>
+(() => {
+  const cA = document.getElementById('canvasA');
+  const cB = document.getElementById('canvasB');
+  const cS = document.getElementById('canvasS');
+  const ctxA = cA.getContext('2d');
+  const ctxB = cB.getContext('2d');
+  const ctxS = cS.getContext('2d');
+
+  const el = id => document.getElementById(id);
+  const controls = {
+    modeA: el('modeA'),
+    modeB: el('modeB'),
+    aAmp: el('aAmp'),
+    bAmp: el('bAmp'),
+    aLam: el('aLam'),
+    bLam: el('bLam'),
+    phase: el('phase'),
+    speedA: el('speedA'),
+    speedB: el('speedB'),
+    dirA: el('dirA'),
+    dirB: el('dirB'),
+    xPos: el('xPos'),
+    showA: el('showA'),
+    showB: el('showB'),
+    showS: el('showS'),
+    showMP: el('showMP'),
+    showX: el('showX'),
+    showShafts: el('showShafts'),
+    showPeaks: el('showPeaks')
+  };
+
+  const labels = {
+    vAamp: el('vAamp'),
+    vBamp: el('vBamp'),
+    vAlam: el('vAlam'),
+    vBlam: el('vBlam'),
+    vPhase: el('vPhase'),
+    vAspeed: el('vAspeed'),
+    vBspeed: el('vBspeed'),
+    vXpos: el('vXpos')
+  };
+
+  const phaseC = el('phaseC');
+  const aLamC = el('aLamC');
+  const bLamC = el('bLamC');
+  const toggleBtn = el('toggleBtn');
+  const resetBtn = el('resetBtn');
+
+  let t = 0;
+  let paused = true;
+
+  const fmt1 = n => Number(n).toFixed(1).replace('.', ',');
+  const fmt2 = n => Number(n).toFixed(2).replace('.', ',');
+
+  function updateLabels() {
+    labels.vAamp.textContent = `${fmt1(+controls.aAmp.value*0.6)} cm`;
+    labels.vBamp.textContent = `${fmt1(+controls.bAmp.value*0.6)} cm`;
+    labels.vAlam.textContent = `${Math.round(+controls.aLam.value)} cm`;
+    labels.vBlam.textContent = `${Math.round(+controls.bLam.value)} cm`;
+    labels.vPhase.textContent = `${fmt2((+controls.phase.value)*100 / Math.PI)} cm`;
+    labels.vAspeed.textContent = `${fmt1(+controls.speedA.value)} cm/s`;
+    labels.vBspeed.textContent = `${fmt1(+controls.speedB.value)} cm/s`;
+    labels.vXpos.textContent = `${Math.round(+controls.xPos.value)} cm`;
+  }
+
+  function updateVisibility() {
+    const continuousBoth = controls.modeA.value === 'kontinuierlich' && controls.modeB.value === 'kontinuierlich';
+    const sameLambda = +controls.aLam.value === +controls.bLam.value;
+    phaseC.classList.toggle('hidden', !(continuousBoth && sameLambda));
+    aLamC.classList.toggle('hidden', controls.modeA.value !== 'kontinuierlich');
+    bLamC.classList.toggle('hidden', controls.modeB.value !== 'kontinuierlich');
+  }
+
+  function drawGrid(ctx, w, h) {
+    ctx.save();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+
+    for (let x = 0; x <= w; x += 50) {
       ctx.beginPath();
-      ctx.moveTo(box.left, box.top);
-      ctx.lineTo(box.left, box.bottom);
-      ctx.lineTo(box.right, box.bottom);
-      ctx.moveTo(box.left, box.top);
-      ctx.lineTo(box.right, box.top);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
       ctx.stroke();
-
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(box.right - box.wallThickness / 2, box.top, box.wallThickness, currentHeight());
-
-      const handleY = (box.top + box.bottom) / 2 - box.handleHeight / 2;
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.58)';
-      ctx.fillRect(box.right - 12, handleY, 24, box.handleHeight);
-
-      ctx.restore();
+    }
+    for (let y = 0; y <= h; y += 50) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
     }
 
-    function drawParticles() {
-      const meanSpeed = meanMaxwellBoltzmannSpeed(Number(temperatureSlider.value));
+    ctx.strokeStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
 
-      for (const p of state.particles) {
-        const canvasSpeed = Math.hypot(p.vx, p.vy);
-        const physicalSpeed = canvasSpeedToPhysicalSpeed(canvasSpeed);
-        const alpha = clamp(0.45 + physicalSpeed / (2.4 * meanSpeed), 0.45, 1);
+    ctx.restore();
+  }
 
-        ctx.fillStyle = `rgba(125, 211, 252, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
+  function drawArrowHead(ctx, x, y, up, color) {
+    const s = 6;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (up) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - s, y + 8);
+      ctx.lineTo(x + s, y + 8);
+    } else {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - s, y - 8);
+      ctx.lineTo(x + s, y - 8);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawArrow(ctx, x, y0, val, color, scale) {
+    if (Math.abs(val) < 0.02) return;
+    const y1 = y0 - val * scale;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
+    drawArrowHead(ctx, x, y1, val > 0, color);
+    ctx.restore();
+  }
+
+  function drawMarker(ctx, x, y, color) {
+    ctx.save();
+    ctx.fillStyle = '#020617';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 13, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawWaveLine(ctx, arr, color, h) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    arr.forEach((y, x) => {
+      const py = h / 2 - y * 30;
+      x === 0 ? ctx.moveTo(x, py) : ctx.lineTo(x, py);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPearlWave(ctx, arr, color, h) {
+    const spacing = 20; // 2 Kästchen = 1 cm
+    ctx.save();
+    ctx.strokeStyle = color + '88';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x < arr.length; x += spacing) {
+      const py = h / 2 - arr[x] * 30;
+      if (x === 0) ctx.moveTo(x, py);
+      else ctx.lineTo(x, py);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    for (let x = 0; x < arr.length; x += spacing) {
+      const py = h / 2 - arr[x] * 30;
+      ctx.beginPath();
+      ctx.arc(x, py, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawWave(ctx, arr, color, h) {
+    if (controls.showPeaks.checked) drawPearlWave(ctx, arr, color, h);
+    else drawWaveLine(ctx, arr, color, h);
+  }
+
+  function waveFor(mode, x, A, lam, time, dir, v, ph) {
+    if (mode === 'kontinuierlich') {
+      return A * Math.sin((2 * Math.PI / lam) * (x - dir * v * time) + ph);
+    }
+
+    const travel = (time * v * 10) % 1200;
+    const c = dir === 1 ? travel : 1200 - travel;
+
+    if (mode === 'berg') return A * Math.exp(-Math.pow((x - c) / 50, 2));
+    if (mode === 'tal') return -A * Math.exp(-Math.pow((x - c) / 50, 2));
+
+    if (mode === 'paket') {
+      const offsets = [-80, -40, 0, 40, 80];
+      const amps = [0.25, 0.6, 1.0, 0.6, 0.25];
+      let y = 0;
+      for (let i = 0; i < offsets.length; i++) {
+        const cx = c + offsets[i];
+        const sgn = (i % 2 === 0) ? 1 : -1;
+        y += amps[i] * sgn * Math.exp(-Math.pow((x - cx) / 15, 2));
       }
+      return A * y;
     }
 
-    function drawOverlay() {
-      ctx.save();
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = '16px Arial';
-      ctx.fillText('Bewegliche Wand', box.right - 76, box.top - 18);
-      ctx.fillText(`Volumen: ${relativeVolume().toFixed(2)}`, box.left + 8, box.bottom + 34);
-      ctx.restore();
+    return 0;
+  }
+
+  function drawTopParticleArrows(ctx, yArr, h, color, dir) {
+    if (!controls.showShafts.checked) return;
+    const spacing = 20; // regelmäßige Pfeile
+    for (let x = 0; x < yArr.length; x += spacing) {
+      const y0 = h / 2;
+      const dy = yArr[x] * 30;
+      if (Math.abs(dy) < 1.2) continue;
+      drawArrow(ctx, x, y0, yArr[x], color, 30);
     }
+  }
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawBackgroundDots();
-      drawBox();
-      drawParticles();
-      drawOverlay();
-    }
+  function drawXArrowBundle(ctx, x0, yA, yB, yS) {
+    if (!controls.showX.checked) return;
 
-    function updateStats() {
-      collisionRateDisplay.textContent = state.displayCollisionRate.toFixed(0);
-      pressureDisplay.textContent = `${state.displayPressure.toFixed(1)} hPa`;
-      volumeDisplay.textContent = relativeVolume().toFixed(2);
-      freePathDisplay.textContent = `${state.displayFreePath.toFixed(1)} px`;
-      updateTheoreticalSpeedDisplay();
-    }
+    const centerY = 200;
+    const off = 8;
 
-    function animate(timestamp) {
-      if (!state.lastTime) state.lastTime = timestamp;
+    drawArrow(ctx, x0 - off, centerY, yA, '#FFCC33', 30);
+    drawArrow(ctx, x0 + off, centerY, yB, '#0000FF', 30);
+    if (controls.showS.checked) drawArrow(ctx, x0 + off * 3, centerY, yS, '#00CC00', 30);
+  }
 
-      let dt = (timestamp - state.lastTime) / 1000;
-      state.lastTime = timestamp;
-      dt = Math.min(dt, settings.maxDt);
-
-      if (state.running) {
-        updatePhysics(dt);
-      }
-
-      draw();
-      updateStats();
-      requestAnimationFrame(animate);
-    }
-
-    function getCanvasX(event) {
-      const rect = canvas.getBoundingClientRect();
-      return (event.clientX - rect.left) * (canvas.width / rect.width);
-    }
-
-    function isOnWallHandle(x, y) {
-      const handleY = (box.top + box.bottom) / 2 - box.handleHeight / 2;
-      return x >= box.right - 16 && x <= box.right + 16 && y >= handleY && y <= handleY + box.handleHeight;
-    }
-
-    canvas.addEventListener('pointerdown', (event) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = (event.clientX - rect.left) * (canvas.width / rect.width);
-      const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-
-      if (isOnWallHandle(x, y)) {
-        state.dragWall = true;
-        state.dragOffsetX = x - box.right;
-        canvas.setPointerCapture(event.pointerId);
-      }
-    });
-
-    canvas.addEventListener('pointermove', (event) => {
-      if (!state.dragWall) return;
-
-      const x = getCanvasX(event) - state.dragOffsetX;
-      box.right = clamp(x, box.minRight, box.rightBase);
-      keepParticlesInside();
-      syncSliderToWall();
-    });
-
-    canvas.addEventListener('pointerup', (event) => {
-      if (state.dragWall) {
-        state.dragWall = false;
-        canvas.releasePointerCapture(event.pointerId);
-        resetMeasurements();
-      }
-    });
-
-    wallSlider.addEventListener('input', () => {
-      setWallFromSlider();
-    });
-
-    temperatureSlider.addEventListener('input', () => {
-      updateLabels();
-
-      createParticles();
-      applyMaxwellBoltzmannThermostat(true);
-      resetMeasurements();
-      updateTheoreticalSpeedDisplay();
-    });
-
-    particleSlider.addEventListener('input', () => {
-      updateLabels();
-      createParticles();
-      applyMaxwellBoltzmannThermostat(true);
-      resetMeasurements();
-    });
-
-    toggleBtn.addEventListener('click', () => {
-      state.running = !state.running;
-      toggleBtn.textContent = state.running ? 'Pause' : 'Fortsetzen';
-    });
-
-    resetBtn.addEventListener('click', () => {
-      wallSlider.value = 100;
-      resetSimulation();
-    });
+  function render() {
+    const w = 1200;
+    const hA = 200;
+    const hB = 200;
+    const hS = 400;
+    const x0 = Math.max(0, Math.min(w - 1, Math.round(+controls.xPos.value)));
 
     updateLabels();
-    resetSimulation();
-    updateTheoreticalSpeedDisplay();
-    requestAnimationFrame(animate);
-  </script>
+    updateVisibility();
+
+    ctxA.clearRect(0, 0, w, hA);
+    ctxB.clearRect(0, 0, w, hB);
+    ctxS.clearRect(0, 0, w, hS);
+
+    drawGrid(ctxA, w, hA);
+    drawGrid(ctxB, w, hB);
+    drawGrid(ctxS, w, hS);
+
+    const A = +controls.aAmp.value;
+    const B = +controls.bAmp.value;
+    const La = +controls.aLam.value;
+    const Lb = +controls.bLam.value;
+    const ph = +controls.phase.value;
+    const vA = +controls.speedA.value;
+    const vB = +controls.speedB.value;
+    const dirA = +controls.dirA.value;
+    const dirB = +controls.dirB.value;
+
+    const yA = [];
+    const yB = [];
+    const yS = [];
+
+    for (let x = 0; x < w; x++) {
+      const va = waveFor(controls.modeA.value, x, A, La, t, dirA, vA, 0);
+      const vb = waveFor(controls.modeB.value, x, B, Lb, t, dirB, vB, ph);
+      yA.push(va);
+      yB.push(vb);
+      yS.push(va + vb);
+    }
+
+    // obere Diagramme
+    drawWave(ctxA, yA, '#FFCC33', hA);
+    drawWave(ctxB, yB, '#0000FF', hB);
+
+    // Pfeile für Teilchen in den oberen Diagrammen
+    drawTopParticleArrows(ctxA, yA, hA, '#FFCC33', dirA);
+    drawTopParticleArrows(ctxB, yB, hB, '#0000FF', dirB);
+
+    // unteres Diagramm
+    if (controls.showA.checked) drawWave(ctxS, yA, '#FFCC33', hS);
+    if (controls.showB.checked) drawWave(ctxS, yB, '#0000FF', hS);
+    if (controls.showS.checked) drawWave(ctxS, yS, '#00CC00', hS);
+
+    // Messpunkt in allen Diagrammen
+    if (controls.showMP.checked) {
+      const pyA = hA / 2 - yA[x0] * 30;
+      const pyB = hB / 2 - yB[x0] * 30;
+      const pyS = hS / 2 - yS[x0] * 30;
+
+      drawMarker(ctxA, x0, pyA, '#FFCC33');
+      drawMarker(ctxB, x0, pyB, '#0000FF');
+      drawMarker(ctxS, x0, pyS, '#00CC00');
+
+      if (controls.showX.checked) {
+        drawArrow(ctxS, x0 , hS / 2, yA[x0], '#FFCC33', 30);
+        drawArrow(ctxS, x0 , hS / 2, yB[x0], '#0000FF', 30);
+      }
+    }
+
+    // Phasenregler nur wenn beide kontinuierlich + gleiche Wellenlänge
+    const continuousBoth = controls.modeA.value === 'kontinuierlich' && controls.modeB.value === 'kontinuierlich';
+    const sameLambda = +controls.aLam.value === +controls.bLam.value;
+    const sameAusbreitungsgeschwindigkeit = +controls.speedA.value === +controls.speedB.value;
+    phaseC.classList.toggle('hidden', !(continuousBoth && sameLambda && sameAusbreitungsgeschwindigkeit));
+
+    if (!paused) t += 0.05;
+    requestAnimationFrame(render);
+  }
+
+  toggleBtn.onclick = () => {
+    paused = !paused;
+    toggleBtn.textContent = paused ? '▶ Start / ⏸ Pause' : '⏸ Pause / ▶ Start';
+  };
+
+  resetBtn.onclick = () => {
+    t = 0;
+  };
+
+  // Events
+  Object.values(controls).forEach(ctrl => {
+    ctrl.addEventListener('input', () => {
+      updateLabels();
+      updateVisibility();
+    });
+  });
+
+  updateLabels();
+  updateVisibility();
+  render();
+})();
+</script>
 </body>
 </html>
